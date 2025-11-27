@@ -24,3 +24,5 @@ Thumbs.db
 # Database
 test.db
 *.sqlite3
+.vercel
+.env*.local

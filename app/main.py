@@ -4,9 +4,6 @@ import os
 from fastapi import FastAPI, Request, HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import payments, delivery, notifications
-from app.database import engine
-from app.models import Base
 from fastapi.responses import JSONResponse
 from fastapi.exception_handlers import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -16,7 +13,6 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(message)s",
     handlers=[
-        logging.FileHandler("trinity.log"),
         logging.StreamHandler()
     ]
 )
@@ -87,26 +83,45 @@ async def startup():
     #     await conn.run_sync(Base.metadata.create_all)
     logger.info("API ready")
 
+
 # Exception handlers
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     logger.error(f"Unhandled error: {exc}")
-    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+    return JSONResponse(
+        status_code=500, 
+        content={"detail": "Internal server error"}
+    )
+
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc):
     logger.warning(f"Validation error: {exc}")
     return JSONResponse(status_code=422, content={"detail": exc.errors()})
 
+
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request, exc):
     logger.warning(f"HTTP error: {exc.detail}")
-    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+    return JSONResponse(
+        status_code=exc.status_code, 
+        content={"detail": exc.detail}
+    )
 
-# Include your API routers here
-app.include_router(payments.router)
-app.include_router(delivery.router)
-app.include_router(notifications.router)
 
-# Example usage of logger inside endpoints or utils:
-# logger.info(f"Payment initiated for order {order_id} by buyer {buyer_id}")
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "service": "Trinity Escrow API"}
+
+
+# Include routers with lazy import to avoid startup issues
+try:
+    from app.routers import payments, delivery, notifications
+    app.include_router(payments.router)
+    app.include_router(delivery.router)
+    app.include_router(notifications.router)
+except ImportError as e:
+    logger.warning(f"Router import failed: {e}")
+except Exception as e:
+    logger.error(f"Failed to include routers: {e}")
