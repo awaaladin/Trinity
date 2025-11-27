@@ -81,10 +81,11 @@ app.add_middleware(RateLimiterMiddleware, max_requests=60, window_seconds=60)
 
 @app.on_event("startup")
 async def startup():
-    logger.info("Starting up and creating DB tables if needed...")
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    logger.info("DB tables are ready")
+    logger.info("Trinity Escrow API starting up...")
+    # Skip DB table creation on serverless - use migrations instead
+    # async with engine.begin() as conn:
+    #     await conn.run_sync(Base.metadata.create_all)
+    logger.info("API ready")
 
 # Exception handlers
 @app.exception_handler(Exception)
